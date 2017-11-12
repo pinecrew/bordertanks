@@ -66,7 +66,7 @@ short game_check_init = 0;
 
 tank_t tank;
 
-font_table_t ft;
+FontTable ft;
 
 void send_error( int code )
 {
@@ -231,14 +231,13 @@ void game_render( void )
     // debug log
     wchar_t buffer[32];
     swprintf(buffer, 32, L"%d %d %d", tank.x / tile_size, tank.y / tile_size, pole[tank.x / tile_size][tank.y / tile_size]);
-    ft.draw(render, buffer, 0, 10);
+    ft.draw(5, 5, buffer);
 
     SDL_RenderPresent( render );
 }
 
 void game_destroy( void )
 {
-    ft.destroy();
     SDL_DestroyTexture( tiles );
     SDL_DestroyRenderer( render );
     SDL_DestroyWindow( window );

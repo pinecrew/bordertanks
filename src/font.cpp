@@ -1,112 +1,129 @@
 #include "font.hpp"
 
-std::vector<std::string> tokenize( std::string data, std::string delimeters ) {
-    size_t start = 0, counter = 0, length;
-    size_t i, del_length = delimeters.length() + 1;
-    size_t d_length = data.length();
-    std::vector<std::string> a;
+const char NULL_STR = '\0';
 
-    do {
-        for ( i = 0; i < del_length; i++ ) {
-            if ( data[counter] == delimeters[i] ) {
-                length = counter - start;
-                if ( length > 0 ) {
-                    a.push_back( std::string( data, start, length ) );
-                    start = counter + 1;
-                    break;
-                }
-                start = counter + 1;
-            }
-        }
-    } while ( counter++ <= d_length ); 
-    return a;
+FontTable::~FontTable( void ) {
+    // удаление загруженной текстуры
+    SDL_DestroyTexture( ft->font );
+    // освобождение параметров текстуры
+    delete[] ft->tex_name;
+    delete[] ft->table;
+    delete ft;
 }
 
-int font_table::load(SDL_Renderer *r, const char *font) {
-    SDL_Texture *tex = NULL;
-    std::string tex_name, data, buf;
-    std::vector<std::string> tok;
-    char buffer[128];
+// функция загрузки шрифтовой текстуры
+int FontTable::load( SDL_Renderer * r, const char * font ) {
+    unsigned int text_size = 0, abc_size = 0;
+    SDL_Texture *tex = nullptr;
     wint_t current = 0;
-    size_t load = 1, i = 0;
-    FILE *f;
+    size_t load = 1;
     int id = 0;
+    FILE * f;
 
+    // записываем рендер
+    render = r;
+    // создаём таблицу с символами
+    ft = new font_table_t;
+    // открываем файл с конфигурацией
     f = fopen( font, "rb" );
-    if ( f == NULL ) {
-        return -2;
+    if ( f == nullptr ) {
+        return ( last_error = A_ERROR_OPEN_FILE );
     }
-
-    do {
-        load = fread( &buffer[i], 1, 1, f );
-    } while ( buffer[i++] != '\0' );
-    data = buffer;
-    tok = tokenize( data, " " );
-    buf = tok[0];
-    this->t_width = atoi( tok[1].c_str() );
-    this->t_height = atoi( tok[2].c_str() );
-    tok.clear();
-    tok = tokenize( font, "/" );
-    for ( size_t i = 0; i < tok.size() - 1; i++ ) {
-        tex_name += tok[i] + "/";
-    }
-    tex_name += buf;
-
-    tex = IMG_LoadTexture( r, tex_name.c_str() );
-    this->font = tex;
-    if ( tex == NULL ) {
+    // читаем размер имени файла с текстурой
+    fread( &( text_size ), sizeof(int), 1, f );
+    // читаем размер алфавита
+    fread( &( abc_size ), sizeof(int), 1, f );
+    // выделяем данные под название текстуры
+    ft->tex_name = new char [text_size];
+    // под таблицу для хранения алфавита 
+    ft->table = new int [abc_size];
+    // читаем имя файла текстуры
+    fread( ft->tex_name, text_size, 1, f );
+    // ширина текстурной буквы
+    fread( &( ft->t_width ), sizeof(int), 1, f );
+    // высота текстурной буквы
+    fread( &( ft->t_height ), sizeof(int), 1, f );
+    // загружаем текстуру
+    tex = IMG_LoadTexture( render, ft->tex_name );
+    ft->font = tex;
+    // обработка ошибок
+    if ( tex == nullptr ) {
         fclose( f );
-        return -1;
+        return ( last_error = A_ERROR_LOAD_TEXTURE );
     }
-    SDL_QueryTexture( tex, NULL, NULL, &( this->f_width ), &( this->f_height ) );
+    // получаем размер текстуры
+    SDL_QueryTexture( tex, nullptr, nullptr, &( ft->f_width ), &( ft->f_height ) );
+    // устанавливаем точку начал чтения алфавита
+    fseek( f, sizeof(int) * 4 + text_size + 1, SEEK_SET );
     do {
+        // читаем букву
         load = fread( &current, 2, 1, f );
+        // добавляем в таблицу
         if ( current != L'\n' && current < 0xFFFF && load != 0 ) {
-            this->table[current] = id++;
+            ft->table[current] = id++;
         }
     } while ( load != 0 );
+    // закрываем файл конфигурации
     fclose( f );
-    return 0;
+    return ( last_error = A_SUCCESS );
 }
 
-void font_table::draw(SDL_Renderer *r, const wchar_t *text, int x, int y) {
-    SDL_Rect wnd = { 0, 0, this->t_width, this->t_height };
-    SDL_Rect pos = { 0, 0, this->t_width, this->t_height };
-    int dy = 0, i = 0, id = 0, old_x = x;
+// функция отрисовки текста
+void FontTable::draw( int x, int y, const wchar_t * text ) {
+    // размер текстурной единицы (блок с буквой)
+    SDL_Rect wnd = { 0, 0, ft->t_width, ft->t_height };
+    // координаты положения
+    SDL_Rect pos = { 0, 0, ft->t_width, ft->t_height };
+    int dy = 0, i = 0, id = 0, old_x = x - ft->t_width;
     wint_t current;
 
-    pos.x = x; pos.y = y;
-    while ( ( current = text[i++] ) != '\0' ) {
+    pos.x = old_x; pos.y = y;
+    // цикл по всей строке с текстом
+    while ( ( current = text[i++] ) != NULL_STR ) {
         switch ( current ) {
+            // обработка переноса строки
             case '\n':
-                pos.y += this->t_height;
+                pos.y += ft->t_height;
                 pos.x = old_x;
                 continue;
-            case '\t':
-                pos.x += 2 * this->t_width;
+            // обработка символа пробел
+            case ' ':
+                pos.x += ft->t_width;
                 continue;
-            // to upper
-            // case 'a'...'z':
+            // обработка символа табуляции
+            case '\t':
+                pos.x += 4 * ft->t_width;
+                continue;
+            // перевод из строчных в заглавные буквы
+            case 'a'...'z':
             case L'а'...L'я':
                 current -= 0x20;
                 break;
         }
-        id = this->table[current];
-        while ( id * this->t_width >= this->f_width ) {
-            id -= this->f_width / this->t_width;
+        // находим номер буквы
+        id = ft->table[current];
+        // находим позицию в текстуре
+        while ( id * ft->t_width >= ft->f_width ) {
+            id -= ft->f_width / ft->t_width;
             dy++;
         }
-        wnd.x = id * this->t_width; wnd.y = dy * this->t_height;
-        pos.x += this->t_width;
-        SDL_RenderCopy( r, this->font, &wnd, &pos );
+        // сдвигаем область отрисовки
+        wnd.x = id * ft->t_width; wnd.y = dy * ft->t_height;
+        pos.x += ft->t_width;
+        // рисуем
+        SDL_RenderCopy( render, ft->font, &wnd, &pos );
         dy = 0;
     }
 }
 
-void font_table::destroy() {
-    SDL_DestroyTexture( this->font );
+// функция перезагрузки
+void FontTable::reload( SDL_Renderer * r ) {
+    SDL_DestroyTexture( ft->font );
+    ft->font = IMG_LoadTexture( r, ft->tex_name );
+    render = r;
 }
 
-void font_table::set_color(Uint32 color) {
-    SDL_SetTextureColorMod( this->font, color >> 16, ( color >> 8 ) & 0xFF, color & 0xFF );
+// функция установки цвета
+void FontTable::set_coloru( Uint32 color ) {
+    SDL_SetTextureColorMod( ft->font, color >> 16, ( color >> 8 ) & 0xFF, color & 0xFF );
 }

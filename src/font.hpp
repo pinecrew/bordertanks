@@ -1,32 +1,51 @@
-#ifndef __FONT_H__
-#define __FONT_H__
-
+#pragma once
+#include <cstdio>
 #include <cstring>
-#include <iostream>
-#include <string>
-#include <vector>
 #include <wchar.h>
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+
+enum font_error {
+    A_NULL_OBJECT = 0,
+    A_SUCCESS,
+    A_ERROR_OPEN_FILE,
+    A_ERROR_LOAD_TEXTURE,
+};
 
 struct font_table {
     int f_height;
     int f_width;
     int t_height;
     int t_width;
-    int table[0xFFFF];
-    SDL_Texture *font;
-
-    int load(SDL_Renderer *r, const char *font);
-    void draw(SDL_Renderer *r, const wchar_t *text, int x, int y);
-    void destroy();
-    
-    void set_color(Uint32 color);
+    int * table;
+    char * tex_name;
+    SDL_Texture * font;
 };
 typedef struct font_table font_table_t;
 
-// int font_load( SDL_Renderer *r, font_table_t **t, const char *font );
-// void set_color( SDL_Texture *tex, Uint32 color );
-// void font_draw( SDL_Renderer *r, font_table_t *t, const wchar_t *text, int x, int y );
-// void font_destroy( font_table_t *t );
+class FontTable {
+public:
+    FontTable( void ) : render( nullptr ), ft( nullptr ) {}
+    ~FontTable( void );
+    int load( SDL_Renderer * r, const char * font );
+    void draw( int x, int y, const wchar_t * text );
+    void reload( SDL_Renderer * r );
+    void set_coloru( Uint32 color );
+    int get_error( void ) const { return last_error; }
+    int get_height( void ) const { return ft->t_height; }
+    int get_width( void ) const { return ft->t_width; }
+private:
+    int last_error = A_SUCCESS;
+    SDL_Renderer * render;
+    font_table_t * ft;  
+};
 
-#endif
+// структура файла конфигурации
+// заголовок:
+//     unsigned int size;
+//     unsigned int abc_size;
+//     char * filename[size];
+//     int width;
+//     int height;
+// размер заголовка = sizeof(int) * 4 + size + 1;
+// далее алфавит до конца файла в формате UTF-8
