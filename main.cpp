@@ -232,7 +232,10 @@ void game_render( void )
 
 void game_destroy( void )
 {
-    font_destroy( ft );
+    // null pointer bug
+    if (ft) {
+        font_destroy( ft );
+    }
     SDL_DestroyTexture( tiles );
     SDL_DestroyRenderer( render );
     SDL_DestroyWindow( window );
