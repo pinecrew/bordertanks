@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <vector>
 #include <wchar.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -16,7 +18,7 @@ const int tile_shift_x = ( screen_width - pole_size * tile_size ) / 2;
 const int tile_shift_y = ( screen_height - pole_size * tile_size ) / 2;
 bool quit_flag = false;
 bool draw_game_info = false;
-const short max_reload = 5;
+const short max_reload = 30;
 
 enum {
     EMPTY = -1,
@@ -54,6 +56,11 @@ struct tank_t {
 struct bullet_t {
     int x, y;
     short direction;
+    short lifetime;
+
+    bool operator < (const bullet_t & a) {
+        return lifetime > a.lifetime;
+    }
 };
 
 SDL_Window *window = NULL;
@@ -65,6 +72,8 @@ short pole[pole_size][pole_size];
 short game_check_init = 0;
 
 tank_t tank;
+
+std::vector<bullet_t> bullets;
 
 FontTable ft;
 
@@ -108,18 +117,11 @@ void tile_draw( SDL_Renderer *r, SDL_Texture *tex, short id, int p )
 
 void game_restart( void )
 {
-    tank.x = 0;
-    tank.y = 0;
-    tank.shoot = false;
-    tank.move = false;
-    tank.direction = MOVE_RIGHT;
+    tank = { 0, 0, false, false, MOVE_RIGHT };
     for ( short i = 0; i < two_pole_size; i++ ) {
-        pole[i%pole_size][i/pole_size] = rand() % 3 - 1;
+        pole[i%pole_size][i/pole_size] = rand() % 5 - 1;
     }
-    pole[0][0] = EMPTY;
-    pole[0][1] = EMPTY;
-    pole[1][0] = EMPTY;
-    pole[1][1] = EMPTY;
+    pole[0][0] = pole[0][1] = pole[1][0] = pole[1][1] = EMPTY;
 }
 
 
@@ -156,7 +158,7 @@ void game_event( SDL_Event *event )
                     tank.shoot = true;
                     break;
                 case SDLK_r:
-                    // game_restart();
+                    game_restart();
                     break;
             }
             break;
@@ -213,10 +215,46 @@ void game_loop( void )
             --tank.reload;
         } else {
             tank.reload = max_reload;
+            bullets.push_back({ 
+                tank.x + tile_shift_x + tile_size / 2, 
+                tank.y + tile_shift_y + tile_size / 2, 
+                tank.direction, 500 
+            });
         }
     } else {
         tank.reload = 0;
     }
+
+    // experimental code
+    for (auto & it : bullets) {
+        it.lifetime--;
+        switch (it.direction) {
+            case MOVE_UP:
+                it.y -= 2;
+                break;
+            case MOVE_DOWN:
+                it.y += 2;
+                break;
+            case MOVE_LEFT:
+                it.x -= 2;
+                break;
+            case MOVE_RIGHT:
+                it.x += 2;
+                break;
+            default:
+                break;
+        }
+    }
+    std::sort(bullets.begin(), bullets.end());
+    auto index = bullets.size();
+    for (auto it = bullets.rbegin(); it != bullets.rend(); it++) {
+        if (it->lifetime >= 0) {
+            break;
+        }
+        index--;
+    }
+    bullets.resize(index);
+
     // printf("%d %d %d\n", tank1.x / tile_size, tank1.y / tile_size, pole[tank1.x / tile_size][tank1.y / tile_size]);
 }
 
@@ -227,6 +265,15 @@ void game_render( void )
         tile_draw( render, tiles, pole[i%pole_size][i/pole_size], i );
     }
     tank.draw( render, tiles );
+
+    SDL_SetRenderDrawColor(render, 255, 255, 255, 255);
+    for (auto & it : bullets) {
+        SDL_Rect rect = {
+            it.x - 3, it.y - 3, 6, 6
+        };
+        SDL_RenderFillRect(render, &rect);
+    }
+    SDL_SetRenderDrawColor(render, 0, 0, 0, 255);
 
     // debug log
     wchar_t buffer[32];
