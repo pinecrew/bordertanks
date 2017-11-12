@@ -4,7 +4,7 @@
 #include <wchar.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include "font.h"
+#include "font.hpp"
 
 const char game_name[] = "bordertanks";
 const int screen_width = 640;
@@ -66,7 +66,7 @@ short game_check_init = 0;
 
 tank_t tank;
 
-font_table_t *ft = NULL;
+font_table_t ft;
 
 void send_error( int code )
 {
@@ -217,7 +217,7 @@ void game_loop( void )
     } else {
         tank.reload = 0;
     }
-    printf("%d %d %d\n", tank1.x / tile_size, tank1.y / tile_size, pole[tank1.x / tile_size][tank1.y / tile_size]);
+    // printf("%d %d %d\n", tank1.x / tile_size, tank1.y / tile_size, pole[tank1.x / tile_size][tank1.y / tile_size]);
 }
 
 void game_render( void )
@@ -227,15 +227,18 @@ void game_render( void )
         tile_draw( render, tiles, pole[i%pole_size][i/pole_size], i );
     }
     tank.draw( render, tiles );
+
+    // debug log
+    wchar_t buffer[32];
+    swprintf(buffer, 32, L"%d %d %d", tank.x / tile_size, tank.y / tile_size, pole[tank.x / tile_size][tank.y / tile_size]);
+    ft.draw(render, buffer, 0, 10);
+
     SDL_RenderPresent( render );
 }
 
 void game_destroy( void )
 {
-    // null pointer bug
-    if (ft) {
-        font_destroy( ft );
-    }
+    ft.destroy();
     SDL_DestroyTexture( tiles );
     SDL_DestroyRenderer( render );
     SDL_DestroyWindow( window );
@@ -255,6 +258,7 @@ void game_init( void )
         send_error( EXIT_FAILURE );
     }
     tiles = IMG_LoadTexture( render, "./images/tiles.png" );
+    ft.load(render, "./configs/font.cfg");
     srand( time( NULL ) );
     game_restart();
 }

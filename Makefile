@@ -1,5 +1,5 @@
 NAME=bordertanks
-SOURCE=main.cpp font.cpp
+SOURCE=src/main.cpp src/font.cpp
 OS=$(shell uname -s)
 
 ifneq ($(OS),Linux)
