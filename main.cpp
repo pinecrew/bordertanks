@@ -6,7 +6,7 @@
 #include <SDL2/SDL_image.h>
 #include "font.h"
 
-const char game_name[] = "battle city";
+const char game_name[] = "bordertanks";
 const int screen_width = 640;
 const int screen_height = 480;
 const int tile_size = 37;
@@ -44,6 +44,11 @@ struct tank_t {
     bool shoot;
     short direction;
     short reload;
+
+    static const int anim_count = 3;
+    char curr_frame = 0;
+
+    void draw(SDL_Renderer *r, SDL_Texture *tex);
 };
 
 struct bullet_t {
@@ -69,13 +74,20 @@ void send_error( int code )
     exit( code );
 }
 
-void tank_draw( SDL_Renderer *r, SDL_Texture *tex, tank_t tank ) {
+void tank_t::draw(SDL_Renderer *r, SDL_Texture *tex) {
     SDL_Rect wnd = { 0, 0, tile_size, tile_size };
     SDL_Rect pos = { 0, 0, tile_size, tile_size };
 
-    pos.x = tank.x + tile_shift_x; 
-    pos.y = tank.y + tile_shift_y;
-    wnd.x = tank.direction * 3 * tile_size;
+    pos.x = this->x + tile_shift_x; 
+    pos.y = this->y + tile_shift_y;
+    wnd.x = (this->direction * this->anim_count + this->curr_frame) * tile_size;
+    if (this->move) {
+        if (this->curr_frame >= anim_count - 1) {
+            this->curr_frame = 0;
+        } else {
+            this->curr_frame++;
+        }
+    }
     SDL_RenderCopy( r, tex, &wnd, &pos );
 }
 
@@ -214,7 +226,7 @@ void game_render( void )
     for ( short i = 0; i < two_pole_size; i++ ) {
         tile_draw( render, tiles, pole[i%pole_size][i/pole_size], i );
     }
-    tank_draw( render, tiles, tank );
+    tank.draw( render, tiles );
     SDL_RenderPresent( render );
 }
 

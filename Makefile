@@ -1,4 +1,4 @@
-NAME=battle-city
+NAME=bordertanks
 SOURCE=main.cpp font.cpp
 OS=$(shell uname -s)
 
