@@ -18,7 +18,7 @@ const int tile_shift_x = ( screen_width - pole_size * tile_size ) / 2;
 const int tile_shift_y = ( screen_height - pole_size * tile_size ) / 2;
 bool quit_flag = false;
 bool draw_game_info = false;
-const short max_reload = 30;
+const short max_reload = 15;
 
 enum {
     EMPTY = -1,
@@ -255,10 +255,10 @@ void game_loop( void )
         pole[(tank1.x + tile_size - 1) / tile_size][(tank1.y + tile_size - 1) / tile_size] == EMPTY) {
         tank = tank1;
     }
-    if (tank.shoot) {
-        if (tank.reload) {
-            --tank.reload;
-        } else {
+    if (tank.reload) {
+        --tank.reload;
+    } else {
+        if (tank.shoot) {
             tank.reload = max_reload;
             bullets.push_back({ 
                 tank.x + tile_shift_x + tile_size / 2, 
@@ -266,8 +266,6 @@ void game_loop( void )
                 tank.direction, 500 
             });
         }
-    } else {
-        tank.reload = 0;
     }
 
     // experimental code
