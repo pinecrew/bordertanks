@@ -24,6 +24,8 @@ enum {
     EMPTY = -1,
     BRICK,
     WALL,
+    CONCRETE,
+    WATER,
     TANK
 };
 
@@ -115,13 +117,56 @@ void tile_draw( SDL_Renderer *r, SDL_Texture *tex, short id, int p )
     SDL_RenderCopy( r, tex, &wnd, &pos );
 }
 
+void load_map(const char * filename) {
+    // +1 for \n char
+    const int map_size = (pole_size + 1) * pole_size;
+    char buffer[256];
+    FILE * f = fopen(filename, "r");
+    fread(buffer, 1, map_size, f);
+    fclose(f);
+
+    int new_line_count = 0;
+    for (short i = 0; i < map_size; i++) {
+        short x = (i - new_line_count) % pole_size;
+        short y = (i - new_line_count) / pole_size;
+        switch (buffer[i]) {
+            case 'P':
+                tank = { x * tile_size, y * tile_size, false, false, MOVE_RIGHT };
+                pole[x][y] = EMPTY;
+                break;
+            case '#':
+                pole[x][y] = WALL;
+                break;
+            case '=':
+                pole[x][y] = BRICK;
+                break;
+            case '.':
+                pole[x][y] = EMPTY;
+                break;
+            case '+':
+                pole[x][y] = CONCRETE;
+                break;
+            case '~':
+                pole[x][y] = WATER;
+                break;
+            case '\n':
+                new_line_count++;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 void game_restart( void )
 {
-    tank = { 0, 0, false, false, MOVE_RIGHT };
-    for ( short i = 0; i < two_pole_size; i++ ) {
-        pole[i%pole_size][i/pole_size] = rand() % 5 - 1;
-    }
-    pole[0][0] = pole[0][1] = pole[1][0] = pole[1][1] = EMPTY;
+    load_map("./maps/map01.txt");
+    // auto-generated map
+    // tank = { 0, 0, false, false, MOVE_RIGHT };
+    // for ( short i = 0; i < two_pole_size; i++ ) {
+    //     pole[i%pole_size][i/pole_size] = rand() % 5 - 1;
+    // }
+    // pole[0][0] = pole[0][1] = pole[1][0] = pole[1][1] = EMPTY;
 }
 
 
@@ -276,8 +321,10 @@ void game_render( void )
     SDL_SetRenderDrawColor(render, 0, 0, 0, 255);
 
     // debug log
-    wchar_t buffer[32];
-    swprintf(buffer, 32, L"%d %d %d", tank.x / tile_size, tank.y / tile_size, pole[tank.x / tile_size][tank.y / tile_size]);
+    wchar_t buffer[64];
+    swprintf(buffer, 64, L"ix: %d\niy: %d\nid: %d\npx: %d\npy: %d", 
+             tank.x / tile_size, tank.y / tile_size, pole[tank.x / tile_size][tank.y / tile_size],
+             tank.x, tank.y);
     ft.draw(5, 5, buffer);
 
     SDL_RenderPresent( render );
