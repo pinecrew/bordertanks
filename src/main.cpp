@@ -57,6 +57,7 @@ const short max_reload = 15;
 // RIGH UP LEFT DOWN
 const int bullet_correct[][ 2 ] = {
     {tile_size, tile_size / 2}, {tile_size / 2, 0}, {0, tile_size / 2}, {tile_size / 2, tile_size}};
+const int direction_vector[][ 2 ] = {{+1, 0}, {0, -1}, {-1, 0}, {0, +1}};
 
 SDL_Window * window = NULL;
 SDL_Renderer * render = NULL;
@@ -78,7 +79,9 @@ void send_error( int code ) {
 }
 
 void tank_t::draw( SDL_Renderer * r, SDL_Texture * tex ) {
+    // tile (x, y, w, h) on image
     SDL_Rect wnd = {0, 0, tile_size, tile_size};
+    // position on screen
     SDL_Rect pos = {0, 0, tile_size, tile_size};
 
     pos.x = this->x + tile_shift_x;
@@ -221,22 +224,8 @@ void game_event( SDL_Event * event ) {
 void game_loop( void ) {
     tank_t tank1 = tank;
     if ( tank.move ) {
-        switch ( tank.direction ) {
-        case MOVE_RIGHT:
-            tank1.x++;
-            break;
-        case MOVE_LEFT:
-            tank1.x--;
-            break;
-        case MOVE_UP:
-            tank1.y--;
-            break;
-        case MOVE_DOWN:
-            tank1.y++;
-            break;
-        default:
-            break;
-        }
+        tank1.x += direction_vector[ tank1.direction ][ 0 ];
+        tank1.y += direction_vector[ tank1.direction ][ 1 ];
     }
     if ( pole[ tank1.x / tile_size ][ tank1.y / tile_size ] == EMPTY &&
          pole[ ( tank1.x + tile_size - 1 ) / tile_size ][ tank1.y / tile_size ] == EMPTY &&
@@ -250,31 +239,26 @@ void game_loop( void ) {
     } else {
         if ( tank.shoot ) {
             tank.reload = max_reload;
-            bullets.push_back( {tank.x + tile_shift_x + bullet_correct[ tank.direction ][ 0 ],
-                                tank.y + tile_shift_y + bullet_correct[ tank.direction ][ 1 ],
-                                tank.direction, 500} );
+            bullets.push_back( {tank.x + bullet_correct[ tank.direction ][ 0 ],
+                                tank.y + bullet_correct[ tank.direction ][ 1 ], tank.direction,
+                                500} );
         }
     }
 
     // experimental code
     for ( auto & it : bullets ) {
-        it.lifetime--;
-        switch ( it.direction ) {
-        case MOVE_UP:
-            it.y -= 2;
-            break;
-        case MOVE_DOWN:
-            it.y += 2;
-            break;
-        case MOVE_LEFT:
-            it.x -= 2;
-            break;
-        case MOVE_RIGHT:
-            it.x += 2;
-            break;
-        default:
-            break;
+        it.x += 2 * direction_vector[ it.direction ][ 0 ];
+        it.y += 2 * direction_vector[ it.direction ][ 1 ];
+        // collide with pole
+        short * curr_tile = &pole[ it.x / tile_size ][ it.y / tile_size ];
+        if ( *curr_tile != EMPTY ) {
+            // simple code for destroy tile (please update this code later)
+            if ( *curr_tile == BRICK ) {
+                *curr_tile = EMPTY;
+            }
+            it.lifetime = 0;
         }
+        it.lifetime--;
     }
     std::sort( bullets.begin(), bullets.end() );
     auto index = bullets.size();
@@ -285,9 +269,6 @@ void game_loop( void ) {
         index--;
     }
     bullets.resize( index );
-
-    // printf("%d %d %d\n", tank1.x / tile_size, tank1.y / tile_size,
-    // pole[tank1.x / tile_size][tank1.y / tile_size]);
 }
 
 void game_render( void ) {
@@ -301,7 +282,7 @@ void game_render( void ) {
     // render bullets
     SDL_SetRenderDrawColor( render, 255, 255, 255, 255 );
     for ( auto & it : bullets ) {
-        SDL_Rect rect = {it.x - 3, it.y - 3, 6, 6};
+        SDL_Rect rect = {it.x - 3 + tile_shift_x, it.y - 3 + tile_shift_y, 6, 6};
         SDL_RenderFillRect( render, &rect );
     }
     SDL_SetRenderDrawColor( render, 0, 0, 0, 255 );
