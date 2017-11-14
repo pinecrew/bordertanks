@@ -8,18 +8,7 @@
 #include <SDL2/SDL_image.h>
 #include "font.hpp"
 
-const char game_name[] = "bordertanks";
-const int screen_width = 640;
-const int screen_height = 480;
-const int tile_size = 37;
-const int pole_size = 12;
-const int two_pole_size = pole_size * pole_size;
-const int tile_shift_x = ( screen_width - pole_size * tile_size ) / 2;
-const int tile_shift_y = ( screen_height - pole_size * tile_size ) / 2;
-bool quit_flag = false;
-bool draw_game_info = false;
-const short max_reload = 15;
-
+// place for enum, struct & etc.
 enum {
     EMPTY = -1,
     BRICK,
@@ -64,6 +53,22 @@ struct bullet_t {
         return lifetime > a.lifetime;
     }
 };
+
+// place for variables and consts
+const char game_name[] = "bordertanks";
+const int screen_width = 640;
+const int screen_height = 480;
+const int tile_size = 37;
+const int pole_size = 12;
+const int two_pole_size = pole_size * pole_size;
+const int tile_shift_x = ( screen_width - pole_size * tile_size ) / 2;
+const int tile_shift_y = ( screen_height - pole_size * tile_size ) / 2;
+bool quit_flag = false;
+bool draw_game_info = false;
+const short max_reload = 15;
+
+// RIGH UP LEFT DOWN
+const int bullet_correct[][2] = {{tile_size, tile_size / 2}, {tile_size / 2, 0}, {0, tile_size / 2}, {tile_size / 2, tile_size}};
 
 SDL_Window *window = NULL;
 SDL_Renderer *render = NULL;
@@ -261,8 +266,8 @@ void game_loop( void )
         if (tank.shoot) {
             tank.reload = max_reload;
             bullets.push_back({ 
-                tank.x + tile_shift_x + tile_size / 2, 
-                tank.y + tile_shift_y + tile_size / 2, 
+                tank.x + tile_shift_x + bullet_correct[tank.direction][0], 
+                tank.y + tile_shift_y + bullet_correct[tank.direction][1], 
                 tank.direction, 500 
             });
         }
@@ -304,11 +309,13 @@ void game_loop( void )
 void game_render( void )
 {
     SDL_RenderClear( render );
+    // render game pole
     for ( short i = 0; i < two_pole_size; i++ ) {
         tile_draw( render, tiles, pole[i%pole_size][i/pole_size], i );
     }
     tank.draw( render, tiles );
 
+    // render bullets
     SDL_SetRenderDrawColor(render, 255, 255, 255, 255);
     for (auto & it : bullets) {
         SDL_Rect rect = {
