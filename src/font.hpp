@@ -1,9 +1,9 @@
 #pragma once
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstring>
 #include <wchar.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 
 enum font_error {
     A_NULL_OBJECT = 0,
@@ -24,7 +24,7 @@ struct font_table {
 typedef struct font_table font_table_t;
 
 class FontTable {
-public:
+  public:
     FontTable( void ) : render( nullptr ), ft( nullptr ) {}
     ~FontTable( void );
     int load( SDL_Renderer * r, const char * font );
@@ -34,10 +34,11 @@ public:
     int get_error( void ) const { return last_error; }
     int get_height( void ) const { return ft->t_height; }
     int get_width( void ) const { return ft->t_width; }
-private:
+
+  private:
     int last_error = A_SUCCESS;
     SDL_Renderer * render;
-    font_table_t * ft;  
+    font_table_t * ft;
 };
 
 // структура файла конфигурации
