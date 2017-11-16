@@ -20,12 +20,19 @@ enum {
 
 enum { GAME_IDLE = 0, GAME_ERROR, GAME_WIN };
 
+struct color_t {
+    Uint8 r;
+    Uint8 g;
+    Uint8 b;
+};
+
 struct tank_t {
     int x, y;
     bool move;
     bool shoot;
     short direction;
     short reload;
+    color_t color = {0, 200, 0};
 
     static const int anim_count = 3;
     char curr_frame = 0;
@@ -94,7 +101,12 @@ void tank_t::draw( SDL_Renderer * r, SDL_Texture * tex ) {
             this->curr_frame++;
         }
     }
+    // dirty color changer hack
+    color_t def_color;
+    SDL_GetTextureColorMod( tex, &def_color.r, &def_color.g, &def_color.b );
+    SDL_SetTextureColorMod( tex, this->color.r, this->color.g, this->color.b );
     SDL_RenderCopy( r, tex, &wnd, &pos );
+    SDL_SetTextureColorMod( tex, def_color.r, def_color.g, def_color.b );
 }
 
 void tile_draw( SDL_Renderer * r, SDL_Texture * tex, short id, int p ) {
