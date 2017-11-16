@@ -1,16 +1,26 @@
-NAME=bordertanks
-SOURCE=src/main.cpp src/font.cpp
-OS=$(shell uname -s)
+CXX = g++
+CFLAGS = $(shell sdl2-config --cflags)
+LFLAGS = -Wall $(shell sdl2-config --libs) -lSDL2_image
 
-ifneq ($(OS),Linux)
-	CFLAGS+=-lmingw32 -Dmain=SDL_main -lSDL2main
-	PROG=$(NAME).exe
-else
-	PROG=$(NAME)
+ifeq ($(RELEASE), yes)
+	LFLAGS+=-O2
 endif
-CFLAGS+=-Wall -lSDL2 -lSDL2_image
+ifeq ($(DEBUG), yes)
+	LFLAGS += -ggdb -g3 -pg -O0
+endif
 
-all:
-	$(CXX) $(SOURCE) -o $(PROG) $(CFLAGS)
+target_file  := main
+prog_name    := bordertanks
+dest_dir     := ./src/
+object_files := $(patsubst %.cpp, %.o, $(wildcard $(dest_dir)*.cpp))
+
+all: $(dest_dir)$(target_file)
+
+$(dest_dir)$(target_file): $(object_files)
+	$(CXX) $(object_files) -o $(prog_name) $(LFLAGS)
+
+%.o: %.cpp
+	$(CXX) $(CFLAGS) -c $< -o $@
+
 clean:
-	$(RM) $(PROG)
+	-$(RM) $(prog_name) $(object_files)
