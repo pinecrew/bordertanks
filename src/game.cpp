@@ -1,11 +1,7 @@
+#include "vector.hpp"
 #include <map>
 #include <string>
 #include <vector>
-
-struct vec2 {
-    float x;
-    float y;
-};
 
 class Bullet {};
 class Tank {};
